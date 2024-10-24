@@ -1,4 +1,8 @@
-## HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket)压测工具，支持单机和分布式
+# HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC)压测工具，并支持单机和分布式
+
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
@@ -11,10 +15,15 @@
 - [x] 支持函数
 - [x] 支持变量
 - [x] Dashboard
+- [ ] TCP/UDP 压测（beta版本）
+- [ ] 阶梯压力测试
+- [ ] gRPC 压测
 
 ![avatar](./demo.png)
 
-### 安装
+## 安装
+
+**注意：go version >= 1.20**
 
 ```
 go get github.com/linkxzhou/http_bench
@@ -23,13 +32,13 @@ go get github.com/linkxzhou/http_bench
 ```
 git clone git@github.com:linkxzhou/http_bench.git
 cd http_bench
-go build http_bench.go
+go build .
 ```
 
-### 架构
+## 架构
 ![avatar](./arch.png)
 
-### 使用
+## 使用
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -57,7 +66,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-### 命令行解析
+## 命令行解析
 
 ```
 -n  请求HTTP的次数
@@ -107,6 +116,11 @@ Latency distribution:
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
+执行压测，使用ws/wss:
+```
+./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
+```
+
 分布式压测样例(使用"-verbose 1"打印详细日志):
 ```
 (1) 第一步:
@@ -126,16 +140,18 @@ Latency distribution:
 在浏览器打开地址(http://127.0.0.1:12345)
 ```
 
-## 函数和变量
+## 支持函数和变量
 **(1) 计算整数之和**  
 ```
 Function: 
   intSum number1 number2 number3 ...
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
 ```
 
@@ -145,9 +161,11 @@ Function:
   random min_value max_value 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
 ```
 
@@ -157,34 +175,40 @@ Function:
   randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate 'YMD' }}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate 'YMD' }}" -verbose 0
 ```
 
-**(4) 生成制定大小的随机字符串**  
+**(4) 生成指定大小的随机字符串**  
 ```
 Function: 
   randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
-**(5) 生成制定大小的随机数字字符串**  
+**(5) 生成指定大小的随机数字字符串**  
 ```
 Function: 
   randomNum count(random string: 0123456789)
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10}}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 }}" -verbose 0
 ```
 
 **(6) 输出当前日期**  
@@ -193,10 +217,12 @@ Function:
   date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date 'YMD' }}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date 'YMD' }}" -verbose 0
 ```
 
 **(7) UUID标识（如果异常返回一个唯一随机字符串）**  
@@ -205,9 +231,11 @@ Function:
   UUID 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
 ```
 
@@ -217,8 +245,52 @@ Function:
   escape str(pipeline with other functions)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
+```
+
+**(9) 16进制转换字符串**  
+```
+Function: 
+  hexToString str(hex to string)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+```
+
+**(10) 字符串转换16进制**  
+```
+Function: 
+  stringToHex str(string to hex, pipeline with other functions)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
+```
+
+**(11) 转换其他值为字符串，加上引号**  
+```
+Function: 
+  toString str(any variable to str and add quotes)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10 | toString }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```

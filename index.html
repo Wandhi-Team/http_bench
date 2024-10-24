@@ -11,23 +11,32 @@
 </head>
 
 <body style="height: 100%; margin: 0">
-    <div id="container" style="height: 70%"></div>
+    <div id="container"
+        style="height: 70%; margin: auto; width:98%; padding: 10px; box-sizing: border-box; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 20px;">
+    </div>
     <div id="app" style="margin: 20px;">
         <el-row>
             <el-button type="primary" :loading="g_running" @click="submitStart">Stress Start</el-button>
             <el-button type="danger" @click="submitStop">Stress Stop</el-button>
         </el-row>
-        <el-input placeholder="Metrics Duration, default 5000ms" v-model="time_metrics" style="margin: 4px 0;">
+        <el-input placeholder="Metrics Duration, default 2000ms" v-model="time_metrics" style="margin: 4px 0;">
             <template slot="prepend">Metrics Duration</template>
+        </el-input>
+        <el-input placeholder="request url" v-model="url" style="margin: 4px 0;">
+            <template slot="prepend">Stress Url</template>
         </el-input>
         <el-input placeholder="GET, POST, PUT, DELETE, HEAD, OPTIONS" v-model="request_method" style="margin: 4px 0;">
             <template slot="prepend">Request method</template>
         </el-input>
-        <el-input placeholder="body" v-model="request_body" style="margin: 4px 0;">
+        <el-input placeholder="Request body" v-model="request_body" type="textarea"
+            :autosize="{ minRows: 5, maxRows: 100}" style="margin: 4px 0;">
             <template slot="prepend">Request body</template>
         </el-input>
-        <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_httptype" style="margin: 4px 0;">
-            <template slot="prepend">Request httptype</template>
+        <el-input placeholder="empty, hex, default empty" v-model="request_bodytype" style="margin: 4px 0;">
+            <template slot="prepend">Request bodytype</template>
+        </el-input>
+        <el-input placeholder="http1, http2, ws, wss, default http1" v-model="request_type" style="margin: 4px 0;">
+            <template slot="prepend">Request type</template>
         </el-input>
         <el-input placeholder="n" v-model="n" style="margin: 4px 0;">
             <template slot="prepend">N</template>
@@ -35,22 +44,22 @@
         <el-input placeholder="c" v-model="c" style="margin: 4px 0;">
             <template slot="prepend">C</template>
         </el-input>
-        <el-input placeholder="duration" v-model="duration" style="margin: 4px 0;">
+        <el-input placeholder="duration(s)" v-model="duration" style="margin: 4px 0;">
             <template slot="prepend">Duration</template>
         </el-input>
-        <el-input placeholder="timeout" v-model="timeout" style="margin: 4px 0;">
+        <el-input placeholder="timeout(ms)" v-model="timeout" style="margin: 4px 0;">
             <template slot="prepend">Timeout</template>
         </el-input>
         <el-input placeholder="qps" v-model="qps" style="margin: 4px 0;">
             <template slot="prepend">QPS</template>
         </el-input>
-        <el-input placeholder="split urls with ;" v-model="urls" style="margin: 4px 0;">
-            <template slot="prepend">Urls</template>
+        <el-input placeholder="/api" v-model="worker_api" style="margin: 4px 0;">
+            <template slot="prepend">Worker API</template>
         </el-input>
     </div>
     <script type="text/javascript">
         Date.prototype.format = function (fmt) {
-            var o = {
+            let o = {
                 "M+": this.getMonth() + 1,
                 "d+": this.getDate(),
                 "h+": this.getHours(),
@@ -62,21 +71,32 @@
             if (/(y+)/.test(fmt)) {
                 fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
             }
-            for (var k in o) {
+            for (let k in o) {
                 if (new RegExp("(" + k + ")").test(fmt)) {
                     fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
                 }
             }
             return fmt;
         }
-        var contentType = { 'Content-Type': 'application/json;charset=utf-8' };
-        var dom = document.getElementById('container');
-        var stressChart = echarts.init(dom, 'dark', {
+
+        const contentType = { 'Content-Type': 'application/json;charset=utf-8' };
+        const workerApiPath = "/api";
+
+        let dom = document.getElementById('container');
+        let stressChart = echarts.init(dom, 'dark', {
             renderer: 'canvas',
             useDirtyRect: false
         });
-        function metricsLoad(timeList, dataList) {
-            var option = {
+
+        function metricsLoad(timeList, qpsList, codeList) {
+            let option = {
+                legend: {
+                    data: ['qps']
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross' }
+                },
                 xAxis: {
                     type: 'category',
                     data: timeList
@@ -86,12 +106,24 @@
                 },
                 series: [
                     {
-                        data: dataList,
+                        name: "qps",
+                        data: qpsList,
                         type: 'line',
                         smooth: true
-                    }
+                    },
                 ]
             };
+
+            for (let key in codeList) {
+                option.series.push({
+                    name: key,
+                    data: codeList[key],
+                    type: 'line',
+                    smooth: true
+                });
+                option.legend.data.push(key);
+            }
+
             if (option && typeof option === 'object') {
                 stressChart.setOption(option);
             }
@@ -102,10 +134,11 @@
         new Vue({
             el: '#app',
             data: {
-                time_metrics: 1000,
+                time_metrics: 2000,
                 request_method: "GET",
                 request_body: "",
-                request_httptype: "http1",
+                request_bodytype: "",
+                request_type: "http1",
                 n: 0,
                 c: 1,
                 duration: 1000,
@@ -115,19 +148,21 @@
                 disable_keepalives: false,
                 auth_username: "",
                 auth_password: "",
-                urls: "http://127.0.0.1:8000?data=1",
+                url: "http://127.0.0.1:8000?data=1",
+                worker_api: "",
                 g_running: false,
                 g_seqid: Math.floor(Math.random() * 1000000) + 1,
                 g_interval: undefined,
             },
             methods: {
-                submitStart: function(e) {
+                submitStart: function (e) {
                     let request_data = {
                         cmd: 0,
                         sequence_id: this.g_seqid,
                         request_method: this.request_method,
                         request_body: this.request_body,
-                        request_httptype: this.request_httptype,
+                        request_bodytype: this.request_bodytype,
+                        request_type: this.request_type,
                         n: parseInt(this.n),
                         c: parseInt(this.c),
                         duration: parseInt(this.duration),
@@ -137,55 +172,110 @@
                         disable_keepalives: this.disable_keepalives || this.disable_keepalives == "true" ? true : false,
                         auth_username: this.auth_username,
                         auth_password: this.auth_password,
-                        urls: this.urls.split(/;/),
+                        url: this.url,
                     };
-                    fetch('/api', {
+
+                    let worker_api = workerApiPath;
+                    if (this.worker_api.length > 0) {
+                        worker_api = this.worker_api;
+                    }
+
+                    fetch(worker_api, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
-                    }).then(response => response.json().then(data => {
-                            if (data.err_code != 0) {
-                                this.g_running = false;
-                                if (this.g_interval) clearInterval(this.g_interval);
-                                this.$message({
-                                    showClose: true,
-                                    message: 'error：' + data.err_msg,
-                                    type: 'error',
-                                    duration: 5000,
-                                });
-                            }
-                        })
-                    )
+                    }).then(response => response.json()).then(data => {
+                        if (data.err_code != 0) {
+                            this.g_running = false;
+                            this.g_interval && clearInterval(this.g_interval);
+
+                            this.$message({
+                                showClose: true,
+                                message: 'error：' + data.err_msg,
+                                type: 'error',
+                                duration: 5000,
+                            });
+                            return;
+                        }
+
+                        this.$message({
+                            showClose: true,
+                            message: 'Start Stress',
+                            type: 'success',
+                            duration: 2000,
+                        });
+                    });
+
+                    let time_list = [], qps_list = [], lats_total = 0;
+                    let status_code_list = {}, lats_status_code_list = {};
+                    let time_metrics = this.time_metrics > 0 ? this.time_metrics : 2000;
+
                     this.g_running = true;
-                    let time_list = [], data_list = [], lats_total = 0;
-                    let time_metrics = this.time_metrics > 0 ? this.time_metrics: 5000;
                     this.g_interval = setInterval(function () {
-                        request_data.cmd = 2;
-                        fetch('/api', {
+                        request_data.cmd = 2; // get metrics
+                        fetch(worker_api, {
                             method: 'POST',
                             headers: contentType,
                             body: JSON.stringify(request_data)
                         }).then(response => response.json()).then(data => {
                             if (data && data.lats_total && (data.lats_total - lats_total) >= 0) {
                                 time_list.push(new Date().format("hh:mm:ss"));
-                                data_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
-                                metricsLoad(time_list, data_list);
+                                qps_list.push((data.lats_total - lats_total) * 1000 / time_metrics);
                                 lats_total = data.lats_total;
+
+                                if (data.status_code_dist) {
+                                    for (let key in data.status_code_dist) {
+                                        if (!status_code_list.hasOwnProperty(key)) {
+                                            status_code_list[key] = [];
+                                        }
+                                        if (!lats_status_code_list.hasOwnProperty(key)) {
+                                            lats_status_code_list[key] = 0;
+                                        }
+                                        status_code_list[key].push(
+                                            (data.status_code_dist[key] - lats_status_code_list[key]) * 1000 / time_metrics)
+                                    }
+                                    lats_status_code_list = data.status_code_dist;
+                                }
                             }
+                            metricsLoad(time_list, qps_list, status_code_list);
                         })
                     }, time_metrics);
                 },
-                submitStop: function(e) {
+                submitStop: function (e) {
                     this.g_running = false;
-                    if (this.g_interval) clearInterval(this.g_interval);
+                    this.g_interval && clearInterval(this.g_interval);
+
                     let request_data = {
                         cmd: 1, // stop
                         sequence_id: this.g_seqid,
                     };
-                    fetch('/api', {
+
+                    let worker_api = workerApiPath;
+                    if (this.worker_api.length > 0) {
+                        worker_api = this.worker_api;
+                    }
+
+                    fetch(worker_api, {
                         method: 'POST',
                         headers: contentType,
                         body: JSON.stringify(request_data)
+                    }).then(response => response.json()).then(data => {
+                        if (data.err_code != 0) {
+                            this.$message({
+                                showClose: true,
+                                message: 'error：' + data.err_msg,
+                                type: 'error',
+                                duration: 5000,
+                            });
+                            return;
+                        }
+
+                        this.$message({
+                            showClose: true,
+                            message: 'Stop Stress',
+                            type: 'success',
+                            duration: 2000,
+                        });
                     });
                 }
             }

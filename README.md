@@ -1,22 +1,31 @@
-## a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket) stress test tool, support single and distributed.
+# a HTTP(HTTP/1, HTTP/2, HTTP/3, Websocket, gRPC) stress testing tool, and support single and distributed.
 
-http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1, http/2 and http/3.
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.20.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.21.yml)
+[![build](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml/badge.svg)](https://github.com/linkxzhou/http_bench/actions/workflows/build1.22.yml)
+
+http_bench is a tiny program that sends some load to a web application, support single and distributed mechine, http/1, http/2, http/3, websocket, grpc.
 
 [English Document](https://github.com/linkxzhou/http_bench/blob/master/README.md)  
 [中文文档](https://github.com/linkxzhou/http_bench/blob/master/README_CN.md)  
 
-- [x] HTTP/1 stress
-- [x] HTTP/2 stress
-- [x] HTTP/3 stress
-- [x] Websocket stress
-- [x] Distributed stress
+- [x] HTTP/1 stress testing
+- [x] HTTP/2 stress testing
+- [x] HTTP/3 stress testing
+- [x] Websocket stress testing
+- [x] Distributed stress testing
 - [x] Support functions
-- [x] Support variable
+- [x] Support variable 
 - [x] Dashboard
+- [ ] TCP/UDP stress testing（beta）
+- [ ] Stepping stress testing
+- [ ] gRPC stress testing
 
 ![avatar](./demo.png)
 
-### Installation
+## Installation
+
+**NOTICE：go version >= 1.20**
 
 ```
 go get github.com/linkxzhou/http_bench
@@ -25,13 +34,13 @@ OR
 ```
 git clone git@github.com:linkxzhou/http_bench.git
 cd http_bench
-go build http_bench.go
+go build .
 ```
 
-### Architecture
+## Architecture
 ![avatar](./arch.png)
 
-### Basic Usage
+## Basic Usage
 
 ```
 ./http_bench http://127.0.0.1:8000 -c 1000 -d 60s
@@ -59,7 +68,7 @@ Latency distribution:
   99% in 0.262 secs
 ```
 
-### Command Line Options
+## Command Line Options
 
 ```
 -n  Number of requests to run.
@@ -115,6 +124,11 @@ Example stress test for http/3:
 ./http_bench -d 10s -c 10 -http http3 -m POST "http://127.0.0.1/test1" -body "{}"
 ```
 
+Example stress test for ws/wss:
+```
+./http_bench -d 10s -c 10 -http ws "ws://127.0.0.1" -body "{}"
+```
+
 Example distributed stress test(print detail info "-verbose 1"):
 ```
 (1) First step:
@@ -134,8 +148,7 @@ Example stress test on browser:
 Open url(http://127.0.0.1:12345) on browser
 ```
 
-
-### Support Function and Variable
+## Support Function and Variable
 
 **(1) intSum**  
 ```
@@ -143,9 +156,11 @@ Function:
   intSum number1 number2 number3 ...
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ intSum 1 2 3 4}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ intSum 1 2 3 4 }}" -verbose 0
 ```
 
@@ -155,9 +170,11 @@ Function:
   random min_value max_value 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ random 1 100000}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ random 1 100000 }}" -verbose 0
 ```
 
@@ -167,10 +184,12 @@ Function:
   randomDate format(random date string: YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss)
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate \"YMD\"}}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate \"YMD\" }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomDate 'YMD' }}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomDate 'YMD' }}" -verbose 0
 ```
 
 **(4) randomString**  
@@ -179,9 +198,11 @@ Function:
   randomString count(random string: 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
 ```
 
@@ -191,10 +212,12 @@ Function:
   randomNum count(random string: 0123456789)
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomString 10}}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomString 10 }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10}}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 }}" -verbose 0
 ```
 
 **(6) date** 
@@ -203,10 +226,12 @@ Function:
   date format(YMD = yyyyMMdd, HMS = HHmmss, YMDHMS = yyyyMMdd-HHmmss) 
 
 Example:  
-== Client Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date \"YMD\" }}" -verbose 0
-== Body Request Example:
-./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date \"YMD\" }}" -verbose 0
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ date 'YMD' }}" -verbose 0
+
+Body Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ date 'YMD' }}" -verbose 0
 ```
 
 **(7) UUID**  
@@ -215,9 +240,11 @@ Function:
   UUID 
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID }}" -verbose 0
 ```
 
@@ -227,8 +254,52 @@ Function:
   escape str(pipeline with other functions)
 
 Example:  
-== Client Request Example:
+
+Client Request Example:
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ UUID | escape }}" -verbose 0
-== Body Request Example:
+
+Body Request Example:  
 ./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ UUID | escape }}" -verbose 0
+```
+
+**(9) hexToString**  
+```
+Function: 
+  hexToString str(hex to string)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ hexToString '68656c6c6f20776f726c64' }}" -verbose 0
+```
+
+**(10) stringToHex**  
+```
+Function: 
+  stringToHex str(string to hex, pipeline with other functions)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ stringToHex 'hello world' }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ stringToHex 'hello world' }}" -verbose 0
+```
+
+**(11) toString**  
+```
+Function: 
+  toString str(any variable to str and add quotes)
+
+Example:  
+
+Client Request Example:
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090?data={{ randomNum 10 | toString }}" -verbose 0
+
+Body Request Example:  
+./http_bench -c 1 -n 1 "https://127.0.0.1:18090" -body "data={{ randomNum 10 | toString }}" -verbose 0
 ```
